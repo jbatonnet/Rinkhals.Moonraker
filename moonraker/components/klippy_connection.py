@@ -12,6 +12,7 @@ import logging
 import getpass
 import asyncio
 import pathlib
+import json
 from ..utils import ServerError, get_unix_peer_credentials
 from ..utils import json_wrapper as jsonw
 from ..common import KlippyState, RequestType
@@ -352,6 +353,9 @@ class KlippyConnection:
         logging.debug("Klippy Connection Failed to Init")
         return False
 
+    def _objects_list(self) -> Any:
+       return {"objects": ["motion_report", "gcode_macro pause", "gcode_macro resume", "gcode_macro cancel_print", "configfile", "heaters", "respond", "display_status", "extruder", "fan", "gcode_move", "heater_bed", "mcu", "mcu nozzle_mcu", "ota_filament_hub", "pause_resume", "pause_resume/cancel", "print_stats", "toolhead", "verify_heater extrude", "verify_heater heater_bed", "virtual_sdcard", "webhooks", "bed_mesh", "bed_mesh \"default\""]}
+
     async def _request_endpoints(self) -> None:
         result = await self.klippy_apis.list_endpoints(default=None)
         if result is None:
@@ -573,6 +577,8 @@ class KlippyConnection:
         if not self.is_connected():
             raise ServerError("Klippy Host not connected", 503)
         rpc_method = web_request.get_endpoint()
+        if rpc_method == "objects/list":
+            return self._objects_list()
         if rpc_method == "objects/subscribe":
             return await self._request_subscripton(web_request)
         else:
@@ -581,6 +587,21 @@ class KlippyConnection:
                 if script:
                     self.server.send_event(
                         "klippy_connection:gcode_received", script)
+                if script.lower() == "bed_mesh_map":
+                    with open('/useremain/home/ytka/printer_data/config/printer_mutable.cfg', 'r') as f:
+                        config = json.load(f)
+                        mesh = config.get('bed_mesh default')
+                        if not mesh is None:
+                            points = json.loads("[[" + mesh.get('points').replace("\n", "], [") + "]]")
+                            return "mesh_map_output " + json.dumps({
+                                "mesh_min": (float(mesh.get('min_x')), float(mesh.get('min_y'))),
+                                "mesh_max": (float(mesh.get('max_x')), float(mesh.get('max_y'))),
+                                "z_positions": points
+                            })
+                        else:
+                            raise self.server.error("Failed to open mesh")
+                elif script.lower().startswith("bed_mesh_calibrate"):
+                    web_request.get_args()["script"] = "MOVE_HEAT_POS\nM109 S140\nWIPE_NOZZLE\nBED_MESH_CALIBRATE\nSAVE_CONFIG"
             return await self._request_standard(web_request)
 
     async def _request_subscripton(self, web_request: WebRequest) -> Dict[str, Any]:
@@ -591,6 +612,12 @@ class KlippyConnection:
                 raise self.server.error(
                     "No connection associated with subscription request"
                 )
+            # Do not send bed_mesh to goklipper, it does not support it
+            if 'bed_mesh' in args['objects']:
+                del args['objects']['bed_mesh']
+            if 'bed_mesh \"default\"' in args['objects']:
+                del args['objects']['bed_mesh \"default\"']
+                
             requested_sub: Subscription = args.get('objects', {})
             all_subs: Subscription = dict(requested_sub)
             # Build the subscription request from a superset of all client subscriptions
@@ -648,6 +675,41 @@ class KlippyConnection:
                     else:
                         pruned_status[obj] = {
                             k: v for k, v in fields.items() if k in valid_fields
+                        }
+                # Please STFU Mainsail, we can't add them because of built-in macros'es, they're already exist (Yes, goklipper thing, blah, blah, blah.)
+                if 'configfile' in pruned_status and 'config' in pruned_status['configfile']:
+                    pruned_status['configfile']['config']['gcode_macro pause'] = {}
+                    pruned_status['configfile']['config']['gcode_macro resume'] = {}
+                    pruned_status['configfile']['config']['gcode_macro cancel_print'] = {}
+                
+                # Add bed_mesh, so mainsail will recognize it
+                with open('/useremain/home/ytka/printer_data/config/printer_mutable.cfg', 'r') as f:
+                    config = json.load(f)
+                    mesh = config.get('bed_mesh default')
+                    if not mesh is None:
+                        points = json.loads("[[" + mesh.get('points').replace("\n", "], [") + "]]")
+                        
+                        pruned_status['bed_mesh'] = {
+                            "profile_name": "default",
+                            "mesh_min": (float(mesh.get("min_x")), float(mesh.get("min_y"))),
+                            "mesh_max": (float(mesh.get("max_x")), float(mesh.get("max_y"))),
+                            "probed_matrix": points,
+                            "mesh_matrix": points
+                        }
+                        pruned_status['bed_mesh \"default\"'] = {
+                            "points": points,
+                            "mesh_params": {
+                                "min_x": float(mesh["min_x"]),
+                                "max_x": float(mesh["max_x"]),
+                                "min_y": float(mesh["min_y"]),
+                                "max_y": float(mesh["max_y"]),
+                                "x_count": int(mesh["x_count"]),
+                                "y_count": int(mesh["y_count"]),
+                                "mesh_x_pps": int(mesh["mesh_x_pps"]),
+                                "mesh_y_pps": int(mesh["mesh_y_pps"]),
+                                "tension": float(mesh["tension"]),
+                                "algo": mesh["algo"]
+                            }
                         }
             if status_diff:
                 # The response to the status request contains changed data, so it

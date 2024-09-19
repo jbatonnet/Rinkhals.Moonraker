@@ -18,7 +18,7 @@ import zipfile
 import shutil
 import uuid
 import logging
-from PIL import Image
+#from PIL import Image
 
 # Annotation imports
 from typing import (
