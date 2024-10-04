@@ -587,10 +587,10 @@ class KlippyConnection:
                 if script:
                     self.server.send_event(
                         "klippy_connection:gcode_received", script)
-                if script.lower() == "bed_mesh_map":
-                    with open('/useremain/home/ytka/printer_data/config/printer_mutable.cfg', 'r') as f:
+                if script.lower() == "bed_mesh_map" and os.path.isfile("/useremain/home/ytka/printer_data/config/printer_mutable.cfg"):
+                    with open("/useremain/home/ytka/printer_data/config/printer_mutable.cfg", "r") as f:
                         config = json.load(f)
-                        mesh = config.get('bed_mesh default')
+                        mesh = config.get("bed_mesh default")
                         if not mesh is None:
                             points = json.loads("[[" + mesh.get('points').replace("\n", "], [") + "]]")
                             return "mesh_map_output " + json.dumps({
@@ -683,34 +683,35 @@ class KlippyConnection:
                     pruned_status['configfile']['config']['gcode_macro cancel_print'] = {}
                 
                 # Add bed_mesh, so mainsail will recognize it
-                with open('/useremain/home/ytka/printer_data/config/printer_mutable.cfg', 'r') as f:
-                    config = json.load(f)
-                    mesh = config.get('bed_mesh default')
-                    if not mesh is None:
-                        points = json.loads("[[" + mesh.get('points').replace("\n", "], [") + "]]")
-                        
-                        pruned_status['bed_mesh'] = {
-                            "profile_name": "default",
-                            "mesh_min": (float(mesh.get("min_x")), float(mesh.get("min_y"))),
-                            "mesh_max": (float(mesh.get("max_x")), float(mesh.get("max_y"))),
-                            "probed_matrix": points,
-                            "mesh_matrix": points
-                        }
-                        pruned_status['bed_mesh \"default\"'] = {
-                            "points": points,
-                            "mesh_params": {
-                                "min_x": float(mesh["min_x"]),
-                                "max_x": float(mesh["max_x"]),
-                                "min_y": float(mesh["min_y"]),
-                                "max_y": float(mesh["max_y"]),
-                                "x_count": int(mesh["x_count"]),
-                                "y_count": int(mesh["y_count"]),
-                                "mesh_x_pps": int(mesh["mesh_x_pps"]),
-                                "mesh_y_pps": int(mesh["mesh_y_pps"]),
-                                "tension": float(mesh["tension"]),
-                                "algo": mesh["algo"]
+                if os.path.isfile("/useremain/home/ytka/printer_data/config/printer_mutable.cfg"):
+                    with open('/useremain/home/ytka/printer_data/config/printer_mutable.cfg', 'r') as f:
+                        config = json.load(f)
+                        mesh = config.get('bed_mesh default')
+                        if not mesh is None:
+                            points = json.loads("[[" + mesh.get('points').replace("\n", "], [") + "]]")
+                            
+                            pruned_status['bed_mesh'] = {
+                                "profile_name": "default",
+                                "mesh_min": (float(mesh.get("min_x")), float(mesh.get("min_y"))),
+                                "mesh_max": (float(mesh.get("max_x")), float(mesh.get("max_y"))),
+                                "probed_matrix": points,
+                                "mesh_matrix": points
                             }
-                        }
+                            pruned_status['bed_mesh \"default\"'] = {
+                                "points": points,
+                                "mesh_params": {
+                                    "min_x": float(mesh["min_x"]),
+                                    "max_x": float(mesh["max_x"]),
+                                    "min_y": float(mesh["min_y"]),
+                                    "max_y": float(mesh["max_y"]),
+                                    "x_count": int(mesh["x_count"]),
+                                    "y_count": int(mesh["y_count"]),
+                                    "mesh_x_pps": int(mesh["mesh_x_pps"]),
+                                    "mesh_y_pps": int(mesh["mesh_y_pps"]),
+                                    "tension": float(mesh["tension"]),
+                                    "algo": mesh["algo"]
+                                }
+                            }
             if status_diff:
                 # The response to the status request contains changed data, so it
                 # is necessary to manually push the status update to existing
