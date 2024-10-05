@@ -712,6 +712,9 @@ class KlippyConnection:
                                     "algo": mesh["algo"]
                                 }
                             }
+                else:
+                     pruned_status['bed_mesh'] = {}
+                     pruned_status['bed_mesh \"default\"'] = {}
             if status_diff:
                 # The response to the status request contains changed data, so it
                 # is necessary to manually push the status update to existing
