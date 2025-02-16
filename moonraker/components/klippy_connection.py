@@ -587,8 +587,8 @@ class KlippyConnection:
                 if script:
                     self.server.send_event(
                         "klippy_connection:gcode_received", script)
-                if script.lower() == "bed_mesh_map" and os.path.isfile("/useremain/home/ytka/printer_data/config/printer_mutable.cfg"):
-                    with open("/useremain/home/ytka/printer_data/config/printer_mutable.cfg", "r") as f:
+                if script.lower() == "bed_mesh_map" and os.path.isfile("/userdata/app/gk/printer_data/config/printer_mutable.cfg"):
+                    with open("/userdata/app/gk/printer_data/config/printer_mutable.cfg", "r") as f:
                         config = json.load(f)
                         mesh = config.get("bed_mesh default")
                         if not mesh is None:
@@ -683,8 +683,8 @@ class KlippyConnection:
                     pruned_status['configfile']['config']['gcode_macro cancel_print'] = {}
                 
                 # Add bed_mesh, so mainsail will recognize it
-                if os.path.isfile("/useremain/home/ytka/printer_data/config/printer_mutable.cfg"):
-                    with open('/useremain/home/ytka/printer_data/config/printer_mutable.cfg', 'r') as f:
+                if os.path.isfile("/userdata/app/gk/printer_data/config/printer_mutable.cfg"):
+                    with open('/userdata/app/gk/printer_data/config/printer_mutable.cfg', 'r') as f:
                         config = json.load(f)
                         mesh = config.get('bed_mesh default')
                         if not mesh is None:
