@@ -150,6 +150,13 @@ class KlippyConnection:
     def executable(self) -> pathlib.Path:
         return self._executable
 
+    def convert_kobra_state(self, state: str):
+        if state.lower() == 'heating':
+            return 'printing'
+        if state.lower() == 'onpause':
+            return 'paused'
+        return state
+
     def load_saved_state(self) -> None:
         db: Database = self.server.lookup_component("database")
         sync_provider = db.get_provider_wrapper()
@@ -600,6 +607,10 @@ class KlippyConnection:
                         val = {k: v for k, v in val.items() if k in fields}
                     if val:
                         conn_status[name] = val
+            
+            if 'print_stats' in conn_status and 'state' in conn_status['print_stats']:
+                conn_status['print_stats']['state'] = self.convert_kobra_state(conn_status['print_stats']['state'])
+
             conn.send_status(conn_status, eventtime)
 
     async def request(self, web_request: WebRequest) -> Any:
@@ -684,6 +695,9 @@ class KlippyConnection:
                         pruned_status[obj] = {
                             k: v for k, v in fields.items() if k in valid_fields
                         }
+
+                if 'print_stats' in pruned_status and 'state' in pruned_status['print_stats']:
+                    pruned_status['print_stats']['state'] = self.convert_kobra_state(pruned_status['print_stats']['state'])
             if status_diff:
                 # The response to the status request contains changed data, so it
                 # is necessary to manually push the status update to existing

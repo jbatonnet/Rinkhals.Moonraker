@@ -234,6 +234,14 @@ class KlippyAPI(APITransport):
             return default
         raise self.server.error("Invalid response received from Klippy", 500)
 
+    
+    def convert_kobra_state(self, state: str):
+        if state.lower() == 'heating':
+            return 'printing'
+        if state.lower() == 'onpause':
+            return 'paused'
+        return state
+
     async def subscribe_objects(
         self,
         objects: Mapping[str, Optional[List[str]]],
@@ -257,6 +265,8 @@ class KlippyAPI(APITransport):
             if callback is not None:
                 self.subscription_callbacks.append(callback)
             return result["status"]
+        if isinstance(result, dict) and "print_stats" in result and 'state' in result['print_stats']:
+            result['print_stats']['state'] = self.convert_kobra_state(result['print_stats']['state'])
         if default is not Sentinel.MISSING:
             return default
         raise self.server.error("Invalid response received from Klippy", 500)
