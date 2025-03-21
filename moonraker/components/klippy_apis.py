@@ -142,6 +142,8 @@ class KlippyAPI(APITransport):
             filename = filename[1:]
         # Escape existing double quotes in the file name
         filename = filename.replace("\"", "\\\"")
+        filename = filename.replace('/useremain/app/gk/gcodes/', '')
+        filename = filename.replace('useremain/app/gk/gcodes/', '')
         if self.kobra.is_using_mqtt():
             try:
                 self.kobra.mqtt_print_file(filename)
